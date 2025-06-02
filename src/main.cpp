@@ -7,6 +7,7 @@ float fastSigmoid(float x) {
   return x / (2 * (1 + std::abs(x))) + 1./2.;
 }
 
+
 class Neuron{
 private:
   int number_of_parents;
@@ -26,6 +27,19 @@ public:
     this->parents = parents;
     this->parent_weights = parent_weights;
   }
+  
+  float getActivation() {
+    return this->activation;
+  }
+
+  float activate() {
+    float sum = 0;
+    for (int i = 0; i < this->parents.size(); i ++) {
+      sum += this->parents[i]->activation * this->parent_weights[i];
+    }
+    sum += this->bias;
+    return fastSigmoid(sum);
+  };
 
 };
 
