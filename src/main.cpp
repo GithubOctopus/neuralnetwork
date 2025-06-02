@@ -1,5 +1,11 @@
+#include <cstdlib>
 #include <iostream>
 #include <vector>
+
+float fastSigmoid(float x) {
+  // f(x) = \frac{x}{2(1+|x|)} + \frac12
+  return x / (2 * (1 + std::abs(x))) + 1./2.;
+}
 
 class Neuron{
 private:
