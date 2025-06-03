@@ -10,27 +10,35 @@ float fastSigmoid(float x) {
   return x / (2 * (1 + std::abs(x))) + 1./2.;
 }
 
+std::vector<float> generateRandomWeights(int size) {
+  std::vector<float> result;
+  for (int i = 0; i < size; i ++) {
+    float r = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+    result.push_back(r);
+  }
+  return result;
+}
+
+float generateRandomBias() {
+  return static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+}
+
 
 class Neuron{
 private:
-  int number_of_parents;
-  std::vector<Neuron*> parents;
+  std::vector<Neuron> *parents;
   std::vector<float> parent_weights;
   float bias;
   float activation;
 public:
   Neuron() {
-    number_of_parents = 0;
-    bias = 0;
   }
   Neuron(
-    int number_of_parents,
-    std::vector<Neuron*> parents,
+    std::vector<Neuron> *parents,
     std::vector<float> parent_weights,
     float bias
   ) {
     this->bias = bias;
-    this->number_of_parents = number_of_parents;
     this->parents = parents;
     this->parent_weights = parent_weights;
   }
@@ -41,8 +49,8 @@ public:
 
   float activate() {
     float sum = 0;
-    for (int i = 0; i < this->parents.size(); i ++) {
-      sum += this->parents[i]->activation * this->parent_weights[i];
+    for (int i = 0; i < this->parents->size(); i ++) {
+      sum += this->parents->at(i).getActivation() * this->parent_weights.at(i);
     }
     sum += this->bias;
     return fastSigmoid(sum);
@@ -52,6 +60,30 @@ public:
   void setActivation(float i) {
     this->activation = i;
   }
+};
+
+class NeuronLayer {
+  int size() {return this->neurons.size();}
+  std::vector<Neuron> *getNeuronsPtr() {return &this->neurons;}
+  NeuronLayer(int size) {
+    this->neurons = std::vector<Neuron>(size);
+  }
+  NeuronLayer(int size, NeuronLayer* parent) {
+    this->parent = parent;
+    this->neurons = std::vector<Neuron>(size);
+    for (int i = 0; i < size; i ++) {
+      std::vector<float> weights = generateRandomWeights(parent->size());
+      float bias = generateRandomBias();
+      this->neurons[i] = Neuron(
+        parent->getNeuronsPtr(), 
+        weights,
+        bias
+      );
+    }
+  };
+  private:
+  std::vector<Neuron> neurons;
+  NeuronLayer *parent;
 };
 
 void printLayer(std::vector<Neuron> &neurons) {
@@ -74,7 +106,6 @@ int setFromLine(std::vector<Neuron> *neurons, std::string line) {
     unsigned char activation_char = std::stoi(tok);
 
     float activation_float = (float)activation_char / 255;
-    std::cout << activation_float << std::endl;
     N.setActivation(activation_float);
   }
   printLayer(*neurons);
@@ -95,7 +126,7 @@ int main(int argc, char** argv) {
   getline(csv, line);
   std::vector<Neuron> input_layer(28*28);
   int digit = setFromLine(&input_layer, line);
-  std::cout << "digit";
+  std::cout << "digit" << digit << "\n";
   
   return 0;
 }
