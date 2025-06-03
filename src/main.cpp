@@ -11,16 +11,17 @@ float fastSigmoid(float x) {
 }
 
 std::vector<float> generateRandomWeights(int size) {
-  std::vector<float> result;
+  std::vector<float> result(size);
   for (int i = 0; i < size; i ++) {
     float r = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-    result.push_back(r);
+    result[i] = r * 2 - 1;
   }
   return result;
 }
 
 float generateRandomBias() {
-  return static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+  float i = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+  return i * 2 - 1;
 }
 
 
@@ -53,7 +54,8 @@ public:
       sum += this->parents->at(i).getActivation() * this->parent_weights.at(i);
     }
     sum += this->bias;
-    return fastSigmoid(sum);
+    this->activation = fastSigmoid(sum);
+    return this->activation;
   };
   
   // only to be used in input layer
@@ -63,6 +65,7 @@ public:
 };
 
 class NeuronLayer {
+public:
   int size() {return this->neurons.size();}
   std::vector<Neuron> *getNeuronsPtr() {return &this->neurons;}
   NeuronLayer(int size) {
@@ -72,26 +75,29 @@ class NeuronLayer {
     this->parent = parent;
     this->neurons = std::vector<Neuron>(size);
     for (int i = 0; i < size; i ++) {
-      std::vector<float> weights = generateRandomWeights(parent->size());
-      float bias = generateRandomBias();
       this->neurons[i] = Neuron(
         parent->getNeuronsPtr(), 
-        weights,
-        bias
+        generateRandomWeights(parent->size()),
+        generateRandomBias()
       );
     }
-  };
-  private:
+  }
+  void activate() {
+    for (Neuron& N : this->neurons) {
+      N.activate();
+    }
+  }
+private:
   std::vector<Neuron> neurons;
   NeuronLayer *parent;
 };
 
-void printLayer(std::vector<Neuron> &neurons) {
-  for (int i = 0; i < 28; i ++) {
-    for (int j = 0; j < 28; j ++) {
-      float a = neurons[i*28+j].getActivation();
-      if (a > 0.5) std::cout << "1 ";
-      else std::cout << "0 ";
+void printLayer(std::vector<Neuron>& neurons, int width = 28) {
+  int height = neurons.size() / width;
+  for (int i = 0; i < height; i++) {
+    for (int j = 0; j < width; j++) {
+      float a = neurons[i * width + j].getActivation();
+      std::cout << (a > 0.5 ? "1 " : "0 ");
     }
     std::cout << "\n";
   }
@@ -124,9 +130,17 @@ int main(int argc, char** argv) {
   csv.open(file_path, std::ios::in);
   std::string line;
   getline(csv, line);
-  std::vector<Neuron> input_layer(28*28);
-  int digit = setFromLine(&input_layer, line);
-  std::cout << "digit" << digit << "\n";
+  NeuronLayer input_layer(28*28);
+  NeuronLayer layer1(28*28, &input_layer);
+  NeuronLayer layer2(16, &layer1);
+  NeuronLayer output(10, &layer2);
+  setFromLine(input_layer.getNeuronsPtr(), line);
+  layer1.activate();
+  layer2.activate();
+  output.activate();
+  printLayer(*layer1.getNeuronsPtr());
+  printLayer(*layer2.getNeuronsPtr(), 4);
+  printLayer(*output.getNeuronsPtr(), 10);
   
   return 0;
 }
