@@ -4,17 +4,22 @@
 #include <string>
 #include <vector>
 #include <fstream>
+#include <cmath>
 
 float fastSigmoid(float x) {
-  // f(x) = \frac{x}{2(1+|x|)} + \frac12
-  return x / (2 * (1 + std::abs(x))) + 1./2.;
+  return x / (2.0f * (1.0f + std::abs(x))) + 0.5f;
+}
+
+float fastSigmoidDerivative(float x) {
+  float denom = 1.0f + std::abs(x);
+  return 1.0f / (2.0f * denom * denom);
 }
 
 std::vector<float> generateRandomWeights(int size) {
   std::vector<float> result(size);
   for (int i = 0; i < size; i ++) {
-    float r = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-    result[i] = r * 2 - 1;
+    float r = static_cast <float> (rand()) / static_cast <float> (RAND_MAX) * 0.5f;
+    result[i] =  r * 2 - 1;
   }
   return result;
 }
@@ -50,17 +55,25 @@ public:
   }
 
   float activate() {
-    float sum = 0;
-    for (int i = 0; i < this->parents->size(); i ++) {
-      sum += this->parents->at(i).getActivation() * this->parent_weights.at(i);
-    }
-    sum += this->bias;
-    this->activation = fastSigmoid(sum);
+    this->activation = fastSigmoid(this->getSum());
     return this->activation;
   };
 
   void setWeight(float n, int index) {
     this->parent_weights[index] = n;
+  }
+
+  float getWeight(int i) {
+    return this->parent_weights[i];
+  }
+
+  float getSum() {
+    float sum = 0;
+    for (int i = 0; i < this->parents->size(); i ++) {
+      sum += this->parents->at(i).getActivation() * this->parent_weights.at(i);
+    }
+    sum += this->bias;
+    return sum;
   }
 
   void setBias(float n) {
@@ -97,6 +110,7 @@ public:
     }
   }
   void activate() {
+    if (this->parent == nullptr) return;
     for (Neuron& N : this->neurons) {
       N.activate();
     }
@@ -107,32 +121,46 @@ private:
 };
 
 std::vector<float> backPropogate(NeuronLayer *L, std::vector<float> desired_activations) {
-  std::vector<float> next_desired_activations = std::vector<float>(L->parentSize());
-  std::vector<std::vector<float>> d_activation_matrix(L->size(), std::vector<float>(L->parentSize()));
-  std::vector<Neuron> *parents = L->getParentPtr()->getNeuronsPtr();
-  if (parents == nullptr) {
-    return std::vector<float>(0);
-  }
-  //std::vector<std::vector<float>> d_activation_matrix(L->size(), std::vector<float>(L->parentSize()));
-  for (int i_neuron = 0; i_neuron < L->size(); i_neuron ++) {
-    Neuron &n = L->getNeuronsPtr()->at(i_neuron);
-    for (int i_weight = 0; i_weight < parents->size(); i_weight ++) {
-      float activation_difference = parents->at(i_weight).getActivation() - n.getActivation();
-      n.setWeight(fastSigmoid(activation_difference), i_weight);
-      d_activation_matrix[i_neuron][i_weight] = 0 - activation_difference;
+  NeuronLayer* this_layer = L;
+  NeuronLayer* parent_layer = L->getParentPtr();
+  if (parent_layer == nullptr) {return std::vector<float>(0);}
+  std::vector<float> this_desired_activations = desired_activations;
+  std::vector<float> parents_desired_activation(parent_layer->size(), 0.0f);
+
+  float learning_rate = 0.2f;
+
+  // for each neuron in this layer
+  for (int i = 0; i < this_layer->size(); i ++) {
+    // for each neuron in the parent layer
+    Neuron &this_neuron = this_layer->getNeuronsPtr()->at(i);
+    float error = this_neuron.getActivation() - desired_activations[i];
+
+    float derivative = fastSigmoidDerivative(this_neuron.getSum());
+    float delta = error * (derivative);
+    for (int j = 0; j < parent_layer->size(); j ++) {
+      Neuron &this_parent = parent_layer->getNeuronsPtr()->at(j);
+      float old_weight = this_neuron.getWeight(j);
+      float gradient = delta * this_parent.getActivation();
+      float new_weight = old_weight + learning_rate * gradient;
+
+      this_neuron.setWeight(new_weight, j);
+      parents_desired_activation[j] += old_weight * (delta );
     }
-    n.activate();
-    n.setBias(fastSigmoid(n.getActivation() - parents->at(i_).getActivation()));
-  }
-  for (int i = 0; i < d_activation_matrix.size(); i ++) {
-    float activation = 0;
-    for (float value : d_activation_matrix[i]) {
-      activation += value;
+    for (int j = 0; j < parent_layer->size(); j ++) {
+      parents_desired_activation[j] += parent_layer->getNeuronsPtr()->at(j).getActivation();
     }
-    activation /= d_activation_matrix[i].size();
-    next_desired_activations[i] = activation;
+    float old_bias = this_neuron.getBias();
+    this_neuron.setBias(old_bias + learning_rate * delta);
+    if (i == 0) {  // just log one neuron
+      std::cout << "Neuron[" << i << "]: Activation = " << this_neuron.getActivation()
+        << ", Desired = " << desired_activations[i]
+        << ", Error = " << (error)
+        << ", Deriv = " << fastSigmoidDerivative(this_neuron.getSum())
+        << ", Delta = " << delta << "\n";
+    }
   }
-  return backPropogate(L->getParentPtr(), desired_activations);
+
+  return backPropogate(parent_layer, parents_desired_activation);
 }
 
 void printLayer(std::vector<Neuron>& neurons, int width = 28) {
@@ -140,7 +168,7 @@ void printLayer(std::vector<Neuron>& neurons, int width = 28) {
   for (int i = 0; i < height; i++) {
     for (int j = 0; j < width; j++) {
       float a = neurons[i * width + j].getActivation();
-      std::cout << (a > 0.5 ? "1 " : "0 ");
+      std::cout << (a > 0 ? "1" : " ");
     }
     std::cout << "\n";
   }
@@ -157,8 +185,21 @@ int setFromLine(std::vector<Neuron> *neurons, std::string line) {
     float activation_float = (float)activation_char / 255;
     N.setActivation(activation_float);
   }
-  printLayer(*neurons);
+  //printLayer(*neurons);
   return digit;
+}
+
+int getAnswer(NeuronLayer *output) {
+  int max_index = 0;
+  float last_max = -std::numeric_limits<float>::infinity();  // ✅ fix here
+  for (int i = 0; i < output->getNeuronsPtr()->size(); i++) {
+    float act = output->getNeuronsPtr()->at(i).getActivation();
+    if (act > last_max) {
+      max_index = i;
+      last_max = act;
+    }
+  }
+  return max_index;
 }
 
 
@@ -166,27 +207,57 @@ int main(int argc, char** argv) {
   for (int i = 0; i < argc; i ++) {
     std::cout << "argv[i] " << argv[i] << std::endl;
   }
-  if (argc < 1) {
+  if (argc < 2) {
     return 1;
   }
   std::string file_path = argv[1];
-  std::ifstream csv;
-  csv.open(file_path, std::ios::in);
   std::string line;
   NeuronLayer input_layer(28*28);
-  NeuronLayer layer1(28*28, &input_layer);
-  NeuronLayer layer2(16, &layer1);
+  NeuronLayer layer1(256, &input_layer);
+  NeuronLayer layer2(128, &layer1);
   NeuronLayer output(10, &layer2);
+
+  std::vector<bool> last_answers;
+  int i = 0;
+  for (int epoch = 0; epoch <= 3; epoch ++) {
+    std::ifstream csv;
+    csv.open(file_path, std::ios::in);
+
+  
   while (getline(csv, line)) {
     int digit = setFromLine(input_layer.getNeuronsPtr(), line);
-    input_layer.activate();
+    i ++;
     layer1.activate();
     layer2.activate();
     output.activate();
-    std::vector<float> desired_activations = std::vector<float>(10);
-    desired_activations[digit] = 1;
+    std::vector<float> desired_activations = std::vector<float>(10, 0.1f);
+    desired_activations[digit] = 0.9f;
+    if (getAnswer(&output) == digit) {
+      //std::cout << "true" << std::endl;
+      last_answers.push_back(true);
+    } else {
+      //std::cout << "false" << std::endl;
+      last_answers.push_back(false);
+    }
+    if (last_answers.size() > 1000) {
+      last_answers.erase(last_answers.begin());
+    }
+    if (i % 10 == 1) {
+      int last_good = 0; for (bool b : last_answers) if (b) last_good ++;
+      std::cout << "ratio: " << last_good << ":" << 1000 - last_good << std::endl;
+      std::cout << "guess: " << getAnswer(&output) << std::endl;
+      printLayer(*input_layer.getNeuronsPtr());
+      std::cout << "Output activations: ";
+      for (int i = 0; i < output.size(); ++i) {
+        std::cout << output.getNeuronsPtr()->at(i).getActivation() << " ";
+      }
+      std::cout << "\n";
+      i = 0; 
+    }
     backPropogate(&output, desired_activations);
+
   };
+  }
   //printLayer(*layer1.getNeuronsPtr());
   //printLayer(*layer2.getNeuronsPtr(), 4);
   //printLayer(*output.getNeuronsPtr(), 10);
