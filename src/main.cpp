@@ -6,11 +6,11 @@
 #include <fstream>
 #include <cmath>
 
-float fastSigmoid(float x) {
+float activationFunction(float x) {
   return x / (2.0f * (1.0f + std::abs(x))) + 0.5f;
 }
 
-float fastSigmoidDerivative(float x) {
+float activationFunctionDerivative(float x) {
   float denom = 1.0f + std::abs(x);
   return 1.0f / (2.0f * denom * denom);
 }
@@ -55,7 +55,7 @@ public:
   }
 
   float activate() {
-    this->activation = fastSigmoid(this->getSum());
+    this->activation = activationFunction(this->getSum());
     return this->activation;
   };
 
@@ -125,39 +125,37 @@ std::vector<float> backPropogate(NeuronLayer *L, std::vector<float> desired_acti
   NeuronLayer* parent_layer = L->getParentPtr();
   if (parent_layer == nullptr) {return std::vector<float>(0);}
   std::vector<float> this_desired_activations = desired_activations;
-  std::vector<float> parents_desired_activation(parent_layer->size(), 0.0f);
+  std::vector<std::vector<float>> parents_desired_activation_matrix(parent_layer->size(), std::vector<float>(parent_layer->size()));
 
   float learning_rate = 0.2f;
 
   // for each neuron in this layer
   for (int i = 0; i < this_layer->size(); i ++) {
-    // for each neuron in the parent layer
     Neuron &this_neuron = this_layer->getNeuronsPtr()->at(i);
-    float error = this_neuron.getActivation() - desired_activations[i];
 
-    float derivative = fastSigmoidDerivative(this_neuron.getSum());
-    float delta = error * (derivative);
+    float error = this_neuron.getActivation() - desired_activations[i];
+    float activation_derivative = activationFunctionDerivative(this_neuron.getSum());
+
+    // for each neuron in the parent layer
     for (int j = 0; j < parent_layer->size(); j ++) {
       Neuron &this_parent = parent_layer->getNeuronsPtr()->at(j);
       float old_weight = this_neuron.getWeight(j);
-      float gradient = delta * this_parent.getActivation();
-      float new_weight = old_weight + learning_rate * gradient;
-
+      float new_weight = old_weight - learning_rate * activation_derivative * error * this_parent.getActivation();
       this_neuron.setWeight(new_weight, j);
-      parents_desired_activation[j] += old_weight * (delta );
+      float old_bias = this_neuron.getBias();
+      float new_bias = old_bias - learning_rate * activation_derivative * error;
+      this_neuron.setBias(new_bias);
+      float ideal_parent_activation = this_parent.getActivation() - learning_rate * activation_derivative * error * new_weight;
     }
-    for (int j = 0; j < parent_layer->size(); j ++) {
-      parents_desired_activation[j] += parent_layer->getNeuronsPtr()->at(j).getActivation();
+  }
+
+  std::vector<float> parents_desired_activation(parent_layer->size());
+  for (int i = 0; i < parents_desired_activation.size(); i ++) {
+    float sum = 0;
+    for (float f : parents_desired_activation_matrix[i]) {
+      sum += f;
     }
-    float old_bias = this_neuron.getBias();
-    this_neuron.setBias(old_bias + learning_rate * delta);
-    if (i == 0) {  // just log one neuron
-      std::cout << "Neuron[" << i << "]: Activation = " << this_neuron.getActivation()
-        << ", Desired = " << desired_activations[i]
-        << ", Error = " << (error)
-        << ", Deriv = " << fastSigmoidDerivative(this_neuron.getSum())
-        << ", Delta = " << delta << "\n";
-    }
+    parents_desired_activation[i] = activationFunction(sum);
   }
 
   return backPropogate(parent_layer, parents_desired_activation);
