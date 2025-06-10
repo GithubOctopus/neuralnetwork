@@ -16,7 +16,7 @@ float activationFunctionDerivative(float x) {
 }
 
 // xavier weight function
-std::vector<float> generateRandomWeights(int size) {
+std::vector<float> generateWeights(int size) {
   float limit = std::sqrt(6.0f / (size + 1)); // +1 assumes output size is 1
   std::vector<float> result(size);
   for (int i = 0; i < size; i++) {
@@ -26,9 +26,7 @@ std::vector<float> generateRandomWeights(int size) {
   return result;
 }
 
-float generateRandomBias() {
-  float i = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-  //return i * 2 - 1;
+float generateBias() {
   return 0.f;
 }
 
@@ -111,8 +109,8 @@ public:
     for (int i = 0; i < size; i ++) {
       this->neurons[i] = Neuron(
         parent->getNeuronsPtr(), 
-        generateRandomWeights(parent->size()),
-        generateRandomBias()
+        generateWeights(parent->size()),
+        generateBias()
       );
     }
   }
