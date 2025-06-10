@@ -176,7 +176,7 @@ void backPropagateHelper(NeuronLayer* this_layer, std::vector<float> deltas) {
   backPropagateHelper(parent_layer, parent_deltas);
 };
 
-void backPropagate2(NeuronLayer *this_layer, std::vector<float> target_activations) {
+void backPropagate(NeuronLayer *this_layer, std::vector<float> target_activations) {
   std::vector<float> deltas(this_layer->size());
 
   for (int i = 0; i < this_layer->size(); i ++) {
@@ -193,48 +193,6 @@ void backPropagate2(NeuronLayer *this_layer, std::vector<float> target_activatio
   }
   backPropagateHelper(this_layer, deltas);
 };
-
-std::vector<float> backPropogate(NeuronLayer *L, std::vector<float> desired_activations) {
-  NeuronLayer* this_layer = L;
-  NeuronLayer* parent_layer = L->getParentPtr();
-  if (parent_layer == nullptr) {return std::vector<float>(0);}
-  std::vector<float> this_desired_activations = desired_activations;
-  std::vector<std::vector<float>> parents_desired_activation_matrix(parent_layer->size(), std::vector<float>(this_layer->size()));
-
-  float learning_rate = 0.1f;
-
-  // for each neuron in this layer
-  for (int i = 0; i < this_layer->size(); i ++) {
-    Neuron &this_neuron = this_layer->getNeuronsPtr()->at(i);
-
-    float error = this_neuron.getActivation() - desired_activations[i];
-    float activation_derivative = activationFunctionDerivative(this_neuron.getSum());
-
-    // for each neuron in the parent layer
-    for (int j = 0; j < parent_layer->size(); j ++) {
-      Neuron &this_parent = parent_layer->getNeuronsPtr()->at(j);
-      float old_weight = this_neuron.getWeight(j);
-      float new_weight = old_weight - learning_rate * activation_derivative * error * this_parent.getActivation();
-      this_neuron.setWeight(new_weight, j);
-      float ideal_parent_activation = this_parent.getActivation() - learning_rate * activation_derivative * error * new_weight;
-      parents_desired_activation_matrix[j][i] = ideal_parent_activation;
-    }
-    float old_bias = this_neuron.getBias();
-    float new_bias = old_bias - learning_rate * activation_derivative * error;
-    this_neuron.setBias(new_bias);
-  }
-
-  std::vector<float> parents_desired_activation(parent_layer->size());
-  for (int i = 0; i < this_layer->size(); i ++) {
-    float sum = 0;
-    for (float f : parents_desired_activation_matrix[i]) {
-      sum += f;
-    }
-    parents_desired_activation[i] = sum / parents_desired_activation_matrix[i].size();
-  }
-
-  return backPropogate(parent_layer, parents_desired_activation);
-}
 
 void printLayer(std::vector<Neuron>& neurons, int width = 28) {
   int height = neurons.size() / width;
@@ -327,7 +285,7 @@ int main(int argc, char** argv) {
       std::cout << "\n";
       i = 0; 
     }
-    backPropagate2(&output, desired_activations);
+    backPropagate(&output, desired_activations);
 
   };
   }
