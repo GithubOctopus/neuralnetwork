@@ -7,26 +7,29 @@
 #include <cmath>
 
 float activationFunction(float x) {
-  return x / (2.0f * (1.0f + std::abs(x))) + 0.5f;
+    return 1.0f / (1.0f + std::exp(-x));
 }
 
 float activationFunctionDerivative(float x) {
-  float denom = 1.0f + std::abs(x);
-  return 1.0f / (2.0f * denom * denom);
+    float fx = activationFunction(x);    // cache the forward pass
+    return fx * (1.0f - fx);
 }
 
+// xavier weight function
 std::vector<float> generateRandomWeights(int size) {
+  float limit = std::sqrt(6.0f / (size + 1)); // +1 assumes output size is 1
   std::vector<float> result(size);
-  for (int i = 0; i < size; i ++) {
-    float r = static_cast <float> (rand()) / static_cast <float> (RAND_MAX) * 0.5f;
-    result[i] =  r * 2 - 1;
+  for (int i = 0; i < size; i++) {
+    float r = static_cast<float>(rand()) / RAND_MAX;  // r in [0, 1]
+    result[i] = (r * 2 - 1) * limit; // scale to [-limit, limit]
   }
   return result;
 }
 
 float generateRandomBias() {
   float i = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-  return i * 2 - 1;
+  //return i * 2 - 1;
+  return 0.f;
 }
 
 
@@ -64,6 +67,10 @@ public:
   }
 
   float getWeight(int i) {
+    if (i >= this->parent_weights.size()) {
+      std::cout << "getWeight(i) > size" << std::endl;
+      exit(0);
+    }
     return this->parent_weights[i];
   }
 
@@ -120,14 +127,79 @@ private:
   NeuronLayer *parent;
 };
 
+
+void backPropagateHelper(NeuronLayer* this_layer, std::vector<float> deltas) {
+  float learning_rate = 0.1f;
+  NeuronLayer *parent_layer = this_layer->getParentPtr();
+  if (parent_layer == nullptr) {return;}
+  std::vector<float> parent_deltas(parent_layer->size(), 0.0f);
+  // for each neuron in layer
+  for (int i = 0; i < this_layer->size(); i++) {
+    Neuron& this_neuron = this_layer->getNeuronsPtr()->at(i);
+    float delta = deltas[i];
+
+    // Bias update
+    this_neuron.setBias(this_neuron.getBias() - learning_rate * delta);
+
+    // Weights update
+    for (int j = 0; j < parent_layer->size(); j++) {
+      /*
+      Neuron& parent = parent_layer->getNeuronsPtr()->at(j);
+      float parent_activation = parent.getActivation();
+      float weight = this_neuron.getWeight(j);
+      float new_weight = weight - learning_rate * delta * parent_activation;
+      this_neuron.setWeight(new_weight, j);
+      */
+
+      Neuron &this_parent = parent_layer->getNeuronsPtr()->at(j);
+      float old_weight = this_neuron.getWeight(j);
+      float new_weight = old_weight - learning_rate * delta * this_parent.getActivation();
+      this_neuron.setWeight(new_weight, j);
+    }
+  }
+
+  if (parent_layer->getParentPtr() == nullptr) {
+    return;
+  }
+
+  for (int j = 0; j < parent_layer->size(); j++) {
+    float sum = 0.0f;
+    for (int i = 0; i < this_layer->size(); i++) {
+      float weight = this_layer->getNeuronsPtr()->at(i).getWeight(j);
+      sum += deltas[i] * weight;
+    }
+    float parent_sum = parent_layer->getNeuronsPtr()->at(j).getSum();
+    parent_deltas[j] = sum * activationFunctionDerivative(parent_sum);
+  }
+  backPropagateHelper(parent_layer, parent_deltas);
+};
+
+void backPropagate2(NeuronLayer *this_layer, std::vector<float> target_activations) {
+  std::vector<float> deltas(this_layer->size());
+
+  for (int i = 0; i < this_layer->size(); i ++) {
+
+    Neuron &this_neuron = this_layer->getNeuronsPtr()->at(i);
+    float error = this_neuron.getActivation() - target_activations[i];
+    float activation_derivative = activationFunctionDerivative(this_neuron.getSum());
+    float delta = error * activation_derivative;
+    deltas[i] = delta;
+
+    std::cout << "delta " << delta << std::endl;
+    std::cout << "error: " << error << std::endl;
+    std::cout << "activation_derivative = " << activation_derivative << std::endl;
+  }
+  backPropagateHelper(this_layer, deltas);
+};
+
 std::vector<float> backPropogate(NeuronLayer *L, std::vector<float> desired_activations) {
   NeuronLayer* this_layer = L;
   NeuronLayer* parent_layer = L->getParentPtr();
   if (parent_layer == nullptr) {return std::vector<float>(0);}
   std::vector<float> this_desired_activations = desired_activations;
-  std::vector<std::vector<float>> parents_desired_activation_matrix(parent_layer->size(), std::vector<float>(parent_layer->size()));
+  std::vector<std::vector<float>> parents_desired_activation_matrix(parent_layer->size(), std::vector<float>(this_layer->size()));
 
-  float learning_rate = 0.2f;
+  float learning_rate = 0.1f;
 
   // for each neuron in this layer
   for (int i = 0; i < this_layer->size(); i ++) {
@@ -142,20 +214,21 @@ std::vector<float> backPropogate(NeuronLayer *L, std::vector<float> desired_acti
       float old_weight = this_neuron.getWeight(j);
       float new_weight = old_weight - learning_rate * activation_derivative * error * this_parent.getActivation();
       this_neuron.setWeight(new_weight, j);
-      float old_bias = this_neuron.getBias();
-      float new_bias = old_bias - learning_rate * activation_derivative * error;
-      this_neuron.setBias(new_bias);
       float ideal_parent_activation = this_parent.getActivation() - learning_rate * activation_derivative * error * new_weight;
+      parents_desired_activation_matrix[j][i] = ideal_parent_activation;
     }
+    float old_bias = this_neuron.getBias();
+    float new_bias = old_bias - learning_rate * activation_derivative * error;
+    this_neuron.setBias(new_bias);
   }
 
   std::vector<float> parents_desired_activation(parent_layer->size());
-  for (int i = 0; i < parents_desired_activation.size(); i ++) {
+  for (int i = 0; i < this_layer->size(); i ++) {
     float sum = 0;
     for (float f : parents_desired_activation_matrix[i]) {
       sum += f;
     }
-    parents_desired_activation[i] = activationFunction(sum);
+    parents_desired_activation[i] = sum / parents_desired_activation_matrix[i].size();
   }
 
   return backPropogate(parent_layer, parents_desired_activation);
@@ -252,7 +325,7 @@ int main(int argc, char** argv) {
       std::cout << "\n";
       i = 0; 
     }
-    backPropogate(&output, desired_activations);
+    backPropagate2(&output, desired_activations);
 
   };
   }
