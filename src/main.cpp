@@ -38,6 +38,7 @@ private:
   std::vector<float> parent_weights;
   float bias;
   float activation;
+  float sum;
 public:
   Neuron() {
   }
@@ -56,7 +57,13 @@ public:
   }
 
   float activate() {
-    this->activation = activationFunction(this->getSum());
+    float sum = 0;
+    for (int i = 0; i < this->parents->size(); i ++) {
+      sum += this->parents->at(i).getActivation() * this->parent_weights.at(i);
+    }
+    sum += this->bias;
+    this->sum = sum;
+    this->activation = activationFunction(this->sum);
     return this->activation;
   };
 
@@ -73,11 +80,6 @@ public:
   }
 
   float getSum() {
-    float sum = 0;
-    for (int i = 0; i < this->parents->size(); i ++) {
-      sum += this->parents->at(i).getActivation() * this->parent_weights.at(i);
-    }
-    sum += this->bias;
     return sum;
   }
 
@@ -85,7 +87,9 @@ public:
     this->bias = n;
   }
 
-  float getBias() {return this->bias;}
+  float getBias() {
+    return this->bias;
+  }
   
   // only to be used in input layer
   void setActivation(float i) {
