@@ -145,13 +145,6 @@ void backPropagateHelper(NeuronLayer* this_layer, std::vector<float> deltas) {
 
     // Weights update
     for (int j = 0; j < parent_layer->size(); j++) {
-      /*
-      Neuron& parent = parent_layer->getNeuronsPtr()->at(j);
-      float parent_activation = parent.getActivation();
-      float weight = this_neuron.getWeight(j);
-      float new_weight = weight - learning_rate * delta * parent_activation;
-      this_neuron.setWeight(new_weight, j);
-      */
 
       Neuron &this_parent = parent_layer->getNeuronsPtr()->at(j);
       float old_weight = this_neuron.getWeight(j);
@@ -216,7 +209,6 @@ int setFromLine(std::vector<Neuron> *neurons, std::string line) {
     float activation_float = (float)activation_char / 255;
     N.setActivation(activation_float);
   }
-  //printLayer(*neurons);
   return digit;
 }
 
@@ -289,9 +281,6 @@ int main(int argc, char** argv) {
 
   };
   }
-  //printLayer(*layer1.getNeuronsPtr());
-  //printLayer(*layer2.getNeuronsPtr(), 4);
-  //printLayer(*output.getNeuronsPtr(), 10);
   
   return 0;
 }
