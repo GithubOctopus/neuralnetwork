@@ -20,6 +20,22 @@ NeuronLayer::NeuronLayer(int size) {
   this->parent = nullptr;
 }
 
+
+std::pair<Neuron*, int> NeuronLayer::mostActivated() {
+  float max = this->neurons.at(0).getActivation();
+  Neuron *neuron = &this->neurons.at(0);
+  int index = 0;
+  for (int i = 1; i < this->neurons.size(); i ++) {
+    Neuron &N = this->neurons.at(i);
+    if (N.getActivation() > max) {
+      max = N.getActivation();
+      neuron = &N;
+      index = i;
+    }
+  }
+  return std::make_pair(neuron, index);
+}
+
 NeuronLayer::NeuronLayer(
   int size,
   NeuronLayer *parent,

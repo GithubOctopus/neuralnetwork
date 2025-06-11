@@ -19,11 +19,13 @@ public:
     std::function<std::vector<float>(int)> generate_weights = glorotInitialize
   );
   NeuronLayer(int size);
+  NeuronLayer();
   void activate(std::function<float(float)> activation_function = sigmoidFunction);
   std::vector<Neuron> *getNeuronsPtr();
   NeuronLayer *getParentPtr();
   int size();
   int parentSize();
+  std::pair<Neuron*, int> mostActivated();
 };
 
 }

@@ -8,10 +8,11 @@ add_executable(${PROJECT_NAME} main.cpp)
 
 add_library(neuron SHARED neuron.cpp)
 add_library(neuronlayer SHARED neuronlayer.cpp)
+add_library(neuralnetwork SHARED neuralnetwork.cpp)
 
-target_link_libraries(neuronlayer neuron)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
     neuron
     neuronlayer
+    neuralnetwork
 )
