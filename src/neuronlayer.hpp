@@ -15,12 +15,13 @@ public:
   NeuronLayer(
     int size,
     NeuronLayer *parent,
-    std::function<float()> generate_bias,
-    std::function<std::vector<float>(int)> generate_weights
+    std::function<float()> generate_bias = [](){return 0.0f;},
+    std::function<std::vector<float>(int)> generate_weights = glorotInitialize
   );
-  void activate(std::function<float(float)> activation_function);
+  NeuronLayer(int size);
+  void activate(std::function<float(float)> activation_function = sigmoidFunction);
   std::vector<Neuron> *getNeuronsPtr();
-  NeuronLayer *getParentPointer();
+  NeuronLayer *getParentPtr();
   int size();
   int parentSize();
 };

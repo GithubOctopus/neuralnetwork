@@ -4,7 +4,7 @@
 
 using namespace NN;
 
-std::vector<float> glorotInitialize(int size) {
+std::vector<float> NN::glorotInitialize(int size) {
   float limit = std::sqrt(6.0f / (size + 1));
   std::vector<float> result(size);
   for (int i = 0; i < size; i++) {
@@ -14,11 +14,17 @@ std::vector<float> glorotInitialize(int size) {
   return result;
 }
 
+
+NeuronLayer::NeuronLayer(int size) {
+  this->neurons = std::vector<Neuron>(size);
+  this->parent = nullptr;
+}
+
 NeuronLayer::NeuronLayer(
   int size,
   NeuronLayer *parent,
-  std::function<float()> generate_bias = []() {return 0.0f;},
-  std::function<std::vector<float>(int)> generate_weights = glorotInitialize
+  std::function<float()> generate_bias,
+  std::function<std::vector<float>(int)> generate_weights
 ) : 
   parent(parent),
   neurons(std::vector<Neuron>(size))
@@ -40,7 +46,7 @@ int NeuronLayer::parentSize() {
   return this->parent->size();
 }
 
-void NeuronLayer::activate(std::function<float(float)> activation_function = sigmoidFunction) {
+void NeuronLayer::activate(std::function<float(float)> activation_function) {
   if (this->parent == nullptr) return;
   for (Neuron& N : this->neurons) {
     N.activate(activation_function);
@@ -51,6 +57,6 @@ std::vector<Neuron> *NeuronLayer::getNeuronsPtr() {
   return &this->neurons;
 }
 
-NeuronLayer *NeuronLayer::getParentPointer() {
+NeuronLayer *NeuronLayer::getParentPtr() {
   return this->parent;
 }

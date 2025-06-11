@@ -1,143 +1,21 @@
-#include <cstdlib>
 #include <iostream>
 #include <ostream>
 #include <string>
 #include <vector>
 #include <fstream>
-#include <cmath>
 
-float activationFunction(float x) {
-    return 1.0f / (1.0f + std::exp(-x));
-}
-
-float activationFunctionDerivative(float x) {
-    float fx = activationFunction(x);    // cache the forward pass
-    return fx * (1.0f - fx);
-}
-
-// xavier weight function
-std::vector<float> generateWeights(int size) {
-  float limit = std::sqrt(6.0f / (size + 1)); // +1 assumes output size is 1
-  std::vector<float> result(size);
-  for (int i = 0; i < size; i++) {
-    float r = static_cast<float>(rand()) / RAND_MAX;  // r in [0, 1]
-    result[i] = (r * 2 - 1) * limit; // scale to [-limit, limit]
-  }
-  return result;
-}
-
-float generateBias() {
-  return 0.f;
-}
+#include "neuron.hpp"
+#include "neuronlayer.hpp"
 
 
-
-class Neuron{
-private:
-  std::vector<Neuron> *parents;
-  std::vector<float> parent_weights;
-  float bias;
-  float activation;
-  float sum;
-public:
-  Neuron() {
-  }
-  Neuron(
-    std::vector<Neuron> *parents,
-    std::vector<float> parent_weights,
-    float bias
-  ) {
-    this->bias = bias;
-    this->parents = parents;
-    this->parent_weights = parent_weights;
-  }
-  
-  float getActivation() {
-    return this->activation;
-  }
-
-  float activate() {
-    float sum = 0;
-    for (int i = 0; i < this->parents->size(); i ++) {
-      sum += this->parents->at(i).getActivation() * this->parent_weights.at(i);
-    }
-    sum += this->bias;
-    this->sum = sum;
-    this->activation = activationFunction(this->sum);
-    return this->activation;
-  };
-
-  void setWeight(float n, int index) {
-    this->parent_weights[index] = n;
-  }
-
-  float getWeight(int i) {
-    if (i >= this->parent_weights.size()) {
-      std::cout << "getWeight(i) > size" << std::endl;
-      exit(0);
-    }
-    return this->parent_weights[i];
-  }
-
-  float getSum() {
-    return sum;
-  }
-
-  void setBias(float n) {
-    this->bias = n;
-  }
-
-  float getBias() {
-    return this->bias;
-  }
-  
-  // only to be used in input layer
-  void setActivation(float i) {
-    this->activation = i;
-  }
-};
-
-class NeuronLayer {
-public:
-  int size() {return this->neurons.size();}
-  int parentSize() {return this->parent->size();}
-  std::vector<Neuron> *getNeuronsPtr() {return &this->neurons;}
-  NeuronLayer *getParentPtr() {return this->parent;}
-  NeuronLayer(int size) {
-    this->neurons = std::vector<Neuron>(size);
-    this->parent = nullptr;
-  }
-  NeuronLayer(int size, NeuronLayer* parent) {
-    this->parent = parent;
-    this->neurons = std::vector<Neuron>(size);
-    for (int i = 0; i < size; i ++) {
-      this->neurons[i] = Neuron(
-        parent->getNeuronsPtr(), 
-        generateWeights(parent->size()),
-        generateBias()
-      );
-    }
-  }
-  void activate() {
-    if (this->parent == nullptr) return;
-    for (Neuron& N : this->neurons) {
-      N.activate();
-    }
-  }
-private:
-  std::vector<Neuron> neurons;
-  NeuronLayer *parent;
-};
-
-
-void backPropagateHelper(NeuronLayer* this_layer, std::vector<float> deltas) {
+void backPropagateHelper(NN::NeuronLayer* this_layer, std::vector<float> deltas) {
   float learning_rate = 0.1f;
-  NeuronLayer *parent_layer = this_layer->getParentPtr();
+  NN::NeuronLayer *parent_layer = this_layer->getParentPtr();
   if (parent_layer == nullptr) {return;}
   std::vector<float> parent_deltas(parent_layer->size(), 0.0f);
   // for each neuron in layer
   for (int i = 0; i < this_layer->size(); i++) {
-    Neuron& this_neuron = this_layer->getNeuronsPtr()->at(i);
+    NN::Neuron& this_neuron = this_layer->getNeuronsPtr()->at(i);
     float delta = deltas[i];
 
     // Bias update
@@ -146,7 +24,7 @@ void backPropagateHelper(NeuronLayer* this_layer, std::vector<float> deltas) {
     // Weights update
     for (int j = 0; j < parent_layer->size(); j++) {
 
-      Neuron &this_parent = parent_layer->getNeuronsPtr()->at(j);
+      NN::Neuron &this_parent = parent_layer->getNeuronsPtr()->at(j);
       float old_weight = this_neuron.getWeight(j);
       float new_weight = old_weight - learning_rate * delta * this_parent.getActivation();
       this_neuron.setWeight(new_weight, j);
@@ -164,19 +42,19 @@ void backPropagateHelper(NeuronLayer* this_layer, std::vector<float> deltas) {
       sum += deltas[i] * weight;
     }
     float parent_sum = parent_layer->getNeuronsPtr()->at(j).getSum();
-    parent_deltas[j] = sum * activationFunctionDerivative(parent_sum);
+    parent_deltas[j] = sum * NN::sigmoidDerivativeFunction(parent_sum);
   }
   backPropagateHelper(parent_layer, parent_deltas);
 };
 
-void backPropagate(NeuronLayer *this_layer, std::vector<float> target_activations) {
+void backPropagate(NN::NeuronLayer *this_layer, std::vector<float> target_activations) {
   std::vector<float> deltas(this_layer->size());
 
   for (int i = 0; i < this_layer->size(); i ++) {
 
-    Neuron &this_neuron = this_layer->getNeuronsPtr()->at(i);
+    NN::Neuron &this_neuron = this_layer->getNeuronsPtr()->at(i);
     float error = this_neuron.getActivation() - target_activations[i];
-    float activation_derivative = activationFunctionDerivative(this_neuron.getSum());
+    float activation_derivative = NN::sigmoidDerivativeFunction(this_neuron.getSum());
     float delta = error * activation_derivative;
     deltas[i] = delta;
 
@@ -187,7 +65,7 @@ void backPropagate(NeuronLayer *this_layer, std::vector<float> target_activation
   backPropagateHelper(this_layer, deltas);
 };
 
-void printLayer(std::vector<Neuron>& neurons, int width = 28) {
+void printLayer(std::vector<NN::Neuron>& neurons, int width = 28) {
   int height = neurons.size() / width;
   for (int i = 0; i < height; i++) {
     for (int j = 0; j < width; j++) {
@@ -198,10 +76,10 @@ void printLayer(std::vector<Neuron>& neurons, int width = 28) {
   }
 }
 
-int setFromLine(std::vector<Neuron> *neurons, std::string line) {
+int setFromLine(std::vector<NN::Neuron> *neurons, std::string line) {
   int digit = std::stoi(line.substr(0, line.find(",")));
   int i = line.find(",") + 1;
-  for (Neuron &N : *neurons) {
+  for (NN::Neuron &N : *neurons) {
     std::string tok = line.substr(i, line.find(",", i) - i);
     i = line.find(",", i) + 1;
     unsigned char activation_char = std::stoi(tok);
@@ -212,9 +90,9 @@ int setFromLine(std::vector<Neuron> *neurons, std::string line) {
   return digit;
 }
 
-int getAnswer(NeuronLayer *output) {
+int getAnswer(NN::NeuronLayer *output) {
   int max_index = 0;
-  float last_max = -std::numeric_limits<float>::infinity();  // ✅ fix here
+  float last_max = -100.0f;  // ✅ fix here
   for (int i = 0; i < output->getNeuronsPtr()->size(); i++) {
     float act = output->getNeuronsPtr()->at(i).getActivation();
     if (act > last_max) {
@@ -235,10 +113,10 @@ int main(int argc, char** argv) {
   }
   std::string file_path = argv[1];
   std::string line;
-  NeuronLayer input_layer(28*28);
-  NeuronLayer layer1(256, &input_layer);
-  NeuronLayer layer2(128, &layer1);
-  NeuronLayer output(10, &layer2);
+  NN::NeuronLayer input_layer(28*28);
+  NN::NeuronLayer layer1(256, &input_layer);
+  NN::NeuronLayer layer2(128, &layer1);
+  NN::NeuronLayer output(10, &layer2);
 
   std::vector<bool> last_answers;
   int i = 0;

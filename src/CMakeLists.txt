@@ -6,6 +6,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 #add_subdirectory(fuzzymatch)
 add_executable(${PROJECT_NAME} main.cpp)
 
-#target_link_libraries(${PROJECT_NAME} PRIVATE
-#
-#)
+add_library(neuron SHARED neuron.cpp)
+add_library(neuronlayer SHARED neuronlayer.cpp)
+
+target_link_libraries(neuronlayer neuron)
+
+target_link_libraries(${PROJECT_NAME} PRIVATE
+    neuron
+    neuronlayer
+)
