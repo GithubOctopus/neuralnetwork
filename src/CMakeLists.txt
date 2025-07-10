@@ -15,3 +15,10 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     neuronlayer
     neuralnetwork
 )
+
+add_library(numbernn_shared
+    neuronlayer.cpp
+    neuron.cpp
+    neuralnetwork.cpp
+)
+
