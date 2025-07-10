@@ -24,7 +24,7 @@ public:
     float bias
   ); 
   float getActivation();
-  float activate(std::function<float(float)> activation_function = sigmoidFunction);
+  float activate(const std::function<float(float)> &activation_function = sigmoidFunction);
    
   void setWeight(float n, int index);
   float getWeight(int i);

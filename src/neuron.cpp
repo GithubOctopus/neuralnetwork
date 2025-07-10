@@ -23,7 +23,7 @@ Neuron::Neuron(
 {}
 
 
-float Neuron::activate(std::function<float(float)> activation_function) {
+float Neuron::activate(const std::function<float(float)> &activation_function) {
   float sum = 0;
   for (int i = 0; i < this->parents->size(); i ++) {
     sum += this->parents->at(i).getActivation() * this->parent_weights.at(i);

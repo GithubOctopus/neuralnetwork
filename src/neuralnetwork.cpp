@@ -7,7 +7,7 @@ using namespace NN;
 void backPropagateHidden(
   NeuronLayer *this_layer,
   std::vector<float> deltas,
-  std::function<float(float)> derivative_function,
+  const std::function<float(float)> &derivative_function,
   float learning_rate
 ) {
 
@@ -52,7 +52,7 @@ void backPropagateHidden(
 void backPropagateOutput(
   NeuronLayer *output_layer,
   std::vector<float> ideal_activations,
-  std::function<float(float)> derivative_function,
+  const std::function<float(float)> &derivative_function,
   float learning_rate
 ) {
   std::vector<float> deltas(output_layer->size());
@@ -121,10 +121,10 @@ NeuralNetwork::NeuralNetwork(
   int num_layers,
   int* layer_sizes,
   float learning_rate,
-  std::function<float(float)> activation_function,
-  std::function<float(float)> activation_function_derivative,
-  std::function<float()> generate_bias,
-  std::function<std::vector<float>(int)> generate_weights
+  const std::function<float(float)> &activation_function,
+  const std::function<float(float)> &activation_function_derivative,
+  const std::function<float()> &generate_bias,
+  const std::function<std::vector<float>(int)> &generate_weights
 ) :
   activation_function_derivative(activation_function_derivative),
   activation_function(activation_function),
@@ -141,4 +141,3 @@ NeuralNetwork::NeuralNetwork(
     );
   }
 }
-

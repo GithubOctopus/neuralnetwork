@@ -39,8 +39,8 @@ std::pair<Neuron*, int> NeuronLayer::mostActivated() {
 NeuronLayer::NeuronLayer(
   int size,
   NeuronLayer *parent,
-  std::function<float()> generate_bias,
-  std::function<std::vector<float>(int)> generate_weights
+  const std::function<float()> &generate_bias,
+  const std::function<std::vector<float>(int)> &generate_weights
 ) : 
   parent(parent),
   neurons(std::vector<Neuron>(size))
@@ -62,7 +62,7 @@ int NeuronLayer::parentSize() {
   return this->parent->size();
 }
 
-void NeuronLayer::activate(std::function<float(float)> activation_function) {
+void NeuronLayer::activate(const std::function<float(float)> &activation_function) {
   if (this->parent == nullptr) return;
   for (Neuron& N : this->neurons) {
     N.activate(activation_function);

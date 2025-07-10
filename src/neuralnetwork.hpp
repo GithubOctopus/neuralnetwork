@@ -8,8 +8,8 @@ namespace NN {
 class NeuralNetwork {
 private:
   std::vector<NeuronLayer*> layers;
-  std::function<float(float)> activation_function;
-  std::function<float(float)> activation_function_derivative;
+  const std::function<float(float)> &activation_function;
+  const std::function<float(float)> &activation_function_derivative;
   float learning_rate;
 public:
   std::vector<float> train(
@@ -22,10 +22,10 @@ public:
     int num_layers,
     int* layer_sizes,
     float learning_rate,
-    std::function<float(float)> activation_function = sigmoidFunction,
-    std::function<float(float)> activation_function_derivative = sigmoidDerivativeFunction,
-    std::function<float()> generate_bias = [](){return 0.0f;},
-    std::function<std::vector<float>(int)> generate_weights = glorotInitialize
+    const std::function<float(float)> &activation_function = sigmoidFunction,
+    const std::function<float(float)> &activation_function_derivative = sigmoidDerivativeFunction,
+    const std::function<float()> &generate_bias = [](){return 0.0f;},
+    const std::function<std::vector<float>(int)> &generate_weights = glorotInitialize
   );
 };
 
