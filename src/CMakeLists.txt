@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.29.2)
-project(octoneuralnetwork)
+project(octonn)
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 #set(${PROJECT_NAME}_make_lib TRUE)
@@ -16,9 +17,9 @@ if(NOT ${PROJECT_NAME}_make_lib)
         neuralnetwork
     )
 else()
-    add_library(${PROJECT_NAME}
-        #neuronlayer.cpp
-        #neuron.cpp
+    add_library(${PROJECT_NAME} SHARED
+        neuronlayer.cpp
+        neuron.cpp
         neuralnetwork.cpp
     )
 endif()
