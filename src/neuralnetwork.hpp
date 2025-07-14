@@ -3,6 +3,8 @@
 
 #include "neuron.hpp"
 #include "neuronlayer.hpp"
+#include <ostream>
+#include <functional>
 
 namespace NN {
 class NeuralNetwork {
@@ -10,6 +12,8 @@ private:
   std::vector<NeuronLayer*> layers;
   const std::function<float(float)> &activation_function;
   const std::function<float(float)> &activation_function_derivative;
+  const std::function<float()> &generate_bias;
+  const std::function<std::vector<float>(int)> &generate_weights;
   float learning_rate;
 public:
   std::vector<float> train(
@@ -18,6 +22,9 @@ public:
   );
   std::vector<float> run(std::vector<float> input);
   int result();
+  void resetWeightsAndBiases();
+  float getLearningRate();
+  void setLearningRate(float new_learning_rate);
   NeuralNetwork(
     int num_layers,
     int* layer_sizes,
@@ -27,6 +34,7 @@ public:
     const std::function<float()> &generate_bias = [](){return 0.0f;},
     const std::function<std::vector<float>(int)> &generate_weights = glorotInitialize
   );
+  bool writeToFile(std::ostream &o) const;
 };
 
 

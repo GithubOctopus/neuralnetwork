@@ -1,6 +1,5 @@
 #include "neuralnetwork.hpp"
 #include "neuronlayer.hpp"
-
 using namespace NN;
 
 
@@ -128,7 +127,9 @@ NeuralNetwork::NeuralNetwork(
 ) :
   activation_function_derivative(activation_function_derivative),
   activation_function(activation_function),
-  learning_rate(learning_rate)
+  learning_rate(learning_rate),
+  generate_weights(generate_weights),
+  generate_bias(generate_bias)
 {
   this->layers = std::vector<NeuronLayer*>(num_layers);
   this->layers[0] = new NeuronLayer(layer_sizes[0]); // input layer
@@ -140,4 +141,40 @@ NeuralNetwork::NeuralNetwork(
       generate_weights
     );
   }
+}
+
+void NeuralNetwork::resetWeightsAndBiases() {
+  this->layers = std::vector<NeuronLayer*>(this->layers.size());
+  this->layers[0] = new NeuronLayer(this->layers[0]->size()); // input layer
+  for (int i = 1; i < this->layers.size(); i ++) {
+    layers[i] = new NeuronLayer(
+      this->layers[i]->size(),
+      layers[i-1],
+      generate_bias,
+      generate_weights
+    );
+  }
+}
+
+float NeuralNetwork::getLearningRate() {
+  return this->learning_rate;
+}
+
+void NeuralNetwork::setLearningRate(float f) {
+  this->learning_rate = f;
+}
+
+bool NeuralNetwork::writeToFile(std::ostream &o) const {
+  for (NeuronLayer *l : this->layers) {
+    for (Neuron &n : *l->getNeuronsPtr()) {
+      o << n.getBias() << ",";
+      if (l->getParentPtr() != nullptr) {
+        for (int w_i = 0; w_i < l->getParentPtr()->getNeuronsPtr()->size(); w_i ++) {
+          o << n.getWeight(w_i) << ",";
+        }
+      }
+      o << std::endl;
+    }
+  }
+  return true;
 }
