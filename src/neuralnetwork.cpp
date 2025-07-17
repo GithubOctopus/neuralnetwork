@@ -1,5 +1,9 @@
 #include "neuralnetwork.hpp"
 #include "neuronlayer.hpp"
+#include <streambuf>
+#include <string>
+#include <sstream>
+#include <iostream>
 using namespace NN;
 
 
@@ -166,15 +170,74 @@ void NeuralNetwork::setLearningRate(float f) {
 
 bool NeuralNetwork::writeToFile(std::ostream &o) const {
   for (NeuronLayer *l : this->layers) {
-    for (Neuron &n : *l->getNeuronsPtr()) {
-      o << n.getBias() << ",";
-      if (l->getParentPtr() != nullptr) {
+    o << l->size() << ",";
+  }
+  o << "\n";
+  for (NeuronLayer *l : this->layers) {
+    if (l->getParentPtr() != nullptr) {
+      for (Neuron &n : *l->getNeuronsPtr()) {
+        o << n.getBias() << ",";
         for (int w_i = 0; w_i < l->getParentPtr()->getNeuronsPtr()->size(); w_i ++) {
           o << n.getWeight(w_i) << ",";
         }
+        o << "\n";
       }
-      o << std::endl;
     }
   }
+  return true;
+}
+
+bool NeuralNetwork::readFromFile(std::istream &in) {
+  std::string ln;
+  if (!std::getline(in, ln)) return false;
+  std::stringstream stream(ln);
+  std::vector<int> layers_sizes;
+  std::string size;
+  while (std::getline(stream, size, ',')) {
+    layers_sizes.push_back(std::stoi(size));
+  }
+
+  if (this->layers.size() != layers_sizes.size()) {
+    return false;
+  }
+
+  for (int i = 0; i < this->layers.size(); i ++) {
+    if (this->layers[i]->size() != layers_sizes[i]) {
+      return false;
+    }
+  }
+  for (int layer_index = 0; layer_index < layers_sizes.size(); layer_index ++) {
+
+    auto this_layer = this->layers.at(layer_index);
+    if (this_layer->getParentPtr() == nullptr) {continue;} // input layer
+    int num_weights = this_layer->getParentPtr()->size();
+    int num_neurons = this_layer->size();
+
+
+    for (int neuron_index = 0; neuron_index < num_neurons; neuron_index ++) {
+      std::cout << "Neuron " << layer_index << "|" << neuron_index << std::endl;
+      Neuron &this_neuron = this_layer->getNeuronsPtr()->at(neuron_index);
+
+      std::string line;
+      if (!std::getline(in, line)) {
+        return false; 
+      }
+      std::stringstream line_stream(line);
+      std::string tok_str;
+      std::getline(line_stream, tok_str, ',');
+      float bias = std::stof(tok_str);
+      std::cout << "bias: " << bias << std::endl;
+      this_neuron.setBias(bias);
+
+
+      for (int weight_index = 0; weight_index < num_weights; weight_index ++) {
+        std::getline(line_stream, tok_str, ',');
+        float weight = std::stof(tok_str);
+        this_neuron.setWeight(weight, weight_index);
+        std:: cout << "\tweight " << weight_index << ": " << weight << std::endl;
+      }
+    }
+  }
+
   return true;
 }

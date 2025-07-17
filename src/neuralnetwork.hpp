@@ -35,6 +35,7 @@ public:
     const std::function<std::vector<float>(int)> &generate_weights = glorotInitialize
   );
   bool writeToFile(std::ostream &o) const;
+  bool readFromFile(std::istream &o);
 };
 
 
