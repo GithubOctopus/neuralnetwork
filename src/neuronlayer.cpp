@@ -17,6 +17,9 @@ std::vector<float> NN::glorotInitialize(int size) {
 
 NeuronLayer::NeuronLayer(int size) {
   this->neurons = std::vector<Neuron>(size);
+  for (Neuron &n : this->neurons) {
+    n.setBias(0);
+  }
   this->parent = nullptr;
 }
 
